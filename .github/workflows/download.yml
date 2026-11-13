@@ -1,0 +1,59 @@
+name: Download figshare datasets and commit
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all figshare files
+        run: |
+          mkdir -p dataset
+          dl() { curl -sL --retry 5 --retry-delay 3 -A "Mozilla/5.0" -o "dataset/$2" "$1"; echo "$2 $(stat -c%s dataset/$2 2>/dev/null || echo 0) bytes"; }
+          # Essential Richbourg-Peppas Dataset
+          dl "https://ndownloader.figshare.com/files/65260932" "Essential-RichPepp-Dataset_V2.csv"
+          # Comprehensive Richbourg-Peppas Dataset
+          dl "https://ndownloader.figshare.com/files/65260938" "Comp-RichPepp-Dataset_V2.csv"
+          # R Scripts for Swelling Manuscript
+          dl "https://ndownloader.figshare.com/files/24250880" "Script1_PVA.R"
+          dl "https://ndownloader.figshare.com/files/24250883" "Script2_PEGDA.R"
+          dl "https://ndownloader.figshare.com/files/24250886" "Script3_GelMA.R"
+          dl "https://ndownloader.figshare.com/files/24250877" "Script9_GelMA_Calc_Structure.R"
+          dl "https://ndownloader.figshare.com/files/24250889" "Script4_PVA_Structure.R"
+          dl "https://ndownloader.figshare.com/files/24250892" "Script5_PEGDA_Structure.R"
+          dl "https://ndownloader.figshare.com/files/24250895" "Script6_GelMA_Structure.R"
+          dl "https://ndownloader.figshare.com/files/24250898" "Script7_PVA_Calc_Structure.R"
+          dl "https://ndownloader.figshare.com/files/24250901" "Script8_PEGDA_Calc_Structure.R"
+          # R Script: Hydrogel Property Predictor
+          dl "https://ndownloader.figshare.com/files/65260917" "Predictions-From-Formulations.R"
+          # PVA Stiffness Scripts
+          dl "https://ndownloader.figshare.com/files/34512998" "Comp-PVA-Analysis.R"
+          dl "https://ndownloader.figshare.com/files/34513001" "MPen-PVA-Analysis.R"
+          dl "https://ndownloader.figshare.com/files/34513004" "NInd-PVA-S2-Analysis.R"
+          dl "https://ndownloader.figshare.com/files/34513007" "Rheo-PVA-Analysis.R"
+          dl "https://ndownloader.figshare.com/files/34513010" "Swelling_Analysis.R"
+          dl "https://ndownloader.figshare.com/files/34513013" "Swell-Stiff-Analysis.R"
+          dl "https://ndownloader.figshare.com/files/34513016" "Tensile-PVA-Analysis.R"
+          # SIPN Hydrogels dataset (whole package zip ~70MB)
+          dl "https://ndownloader.figshare.com/files/68163160" "FinalDataCorregido.zip"
+          ls -la dataset/
+
+      - name: Commit files back to repo
+        run: |
+          git config user.name "figshare-bot"
+          git config user.email "actions@github.com"
+          git add dataset/
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Add figshare datasets $(date -u +%Y-%m-%d)"
+            git push
+          fi
