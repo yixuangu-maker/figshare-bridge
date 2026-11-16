@@ -1,0 +1,46 @@
+name: fetch extra datasets
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Zenodo and Pitt datasets
+        run: |
+          set -x
+          mkdir -p extra
+          cd extra
+          curl -sS -L --retry 3 "https://zenodo.org/api/records/793825" -o zen.json
+          python3 - <<'PY'
+          import json, os, urllib.request
+          try:
+              d = json.load(open('zen.json'))
+          except Exception as e:
+              print('zen json bad', e); raise SystemExit
+          os.makedirs('zenodo_793825', exist_ok=True)
+          for f in d.get('files', []):
+              key = f['key']; url = f['links']['self']
+              out = os.path.join('zenodo_793825', key.replace('/', '_'))
+              try:
+                  urllib.request.urlretrieve(url, out)
+                  print('OK', key, os.path.getsize(out))
+              except Exception as e:
+                  print('FAIL', key, e)
+          PY
+          curl -sS -L --retry 3 -A "Mozilla/5.0" -o pitt_treefrog.zip "https://d-scholarship.pitt.edu/downloads/25a4c01a-d15c-4869-aa57-15c5474292aa?locale=en"
+          curl -sS -L --retry 3 -A "Mozilla/5.0" -o pitt_README.txt "https://d-scholarship.pitt.edu/downloads/32dacb8c-33a2-4643-b5ee-99e9fd367efa?locale=en"
+          ls -la
+          du -sh *
+          find . -type f -size +90M -print -delete
+      - name: Commit results
+        run: |
+          git config user.email "bot@users.noreply.github.com"
+          git config user.name "dataset-bot"
+          git add extra
+          git commit -m "add extra adhesion datasets" || echo "no changes"
+          git push
